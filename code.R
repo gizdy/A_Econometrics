@@ -9,6 +9,14 @@ library(ResourceSelection)
 library(caret)
 library("lmtest")
 
+#install.packages("DescTools")
+#install.packages("RDCOMClient", repos="http://www.omegahat.net/R")
+library(DescTools)
+
+#install.packages('aods3')
+library(aods3)
+
+
 setwd("C:/Users/48796/OneDrive/Pulpit/STUDIA/ROK 4/SEM 2/A. Econometrics/project")
 
 data <- as.data.frame(read.csv("Invistico_Airline.csv"))
@@ -83,14 +91,13 @@ for (col in columns3) {
   hist(data[[col]], main = col, xlab = "", col = "lightblue")
 }
 
-small_constant <- 1
 data$Departure.Delay.in.Minutes <- log(data$Departure.Delay.in.Minutes+0.001)
 data$Arrival.Delay.in.Minutes <- log(data$Arrival.Delay.in.Minutes+0.001)
 
 #myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Online.boarding+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
 #                family=binomial(link="probit"))
 #no diff when 1,0 are 50-50, information criteria: we should use AIC to be sure, BIC(SBC) - its better, the lower the value the better 
-myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness+Online.boarding+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
+myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
                family=binomial(link="probit"))
 summary(myprobit)
 
@@ -99,7 +106,7 @@ model_summary <- summary(myprobit)
 r_squared <- model_summary$deviance/model_summary$null.deviance
 # Print the R-squared statistic
 print(r_squared)
-PseudoR2(myprobit)
+PseudoR2(myprobit, "all")
 #can interprate McKelvy.Zavoina if the latent variable is observed the model explainx x% of observations, count is the correct R2 explaining x% of the observation, adj.count is saying % ofcorrectly predicted observations with given variance
 
 # we dont use ramsey reset, we use LINKTEST, modoelhas correct form if yhat is significant and yhat2 is not
@@ -115,80 +122,112 @@ wald.test.results = wald.test(b = coef(dem.probit),
                               Sigma = vcov(dem.probit), L = H)
 wald.test.results
 
+gof_results = gof(myprobit)
+gof_results
+
+
 #for 0,005 of dataset
 # general to specific thatway= h0 is beta=0(for additional variables) and with p-value<0.05 we reject h0. Joint insignificance of all variables test against null
 null_probit = glm(satisfaction~1, data=data, family=binomial(link="probit"))
 lrtest(myprobit, null_probit)
-#bez arrive.delay.in.minutes/inflingh.wifi.service
-myprobit1 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness+Online.boarding+Departure.Delay.in.Minutes, data=data, 
+#bez inflight wifi service
+myprobit1 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
                 family=binomial(link="probit"))
 lrtest(myprobit, myprobit1)
 summary(myprobit1)
-#bez baggage.handlng
-myprobit2 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness+Online.boarding+Departure.Delay.in.Minutes, data=data, 
+#bez inflight.entertainment
+myprobit2 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
                  family=binomial(link="probit"))
 lrtest(myprobit1, myprobit2)
-summary(myprobit2)
-#bez departure.delay.in.minuts
-myprobit3 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness+Online.boarding, data=data, 
+### the change was too significant, go to the next biggest pvalue
+
+#bez gate location
+myprobit3 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
                  family=binomial(link="probit"))
-lrtest(myprobit2, myprobit3)
-summary(myprobit3)
-#bez age
-myprobit4 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness+Online.boarding, data=data, 
+lrtest(myprobit1, myprobit3)
+### the change was too significant, go to the next biggest pvalue
+
+#bez class
+myprobit4 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
                  family=binomial(link="probit"))
-lrtest(myprobit3, myprobit4)
+lrtest(myprobit1, myprobit4)
 summary(myprobit4)
-#bezflight.distance
-myprobit5 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Class+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness+Online.boarding, data=data, 
+# bez arrival delay
+myprobit5 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Departure.Delay.in.Minutes, data=data, 
                  family=binomial(link="probit"))
 lrtest(myprobit4, myprobit5)
 summary(myprobit5)
-#bez departure.arrival.time.convenient
-myprobit6 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Class+Seat.comfort*Food.and.drink+Food.and.drink+Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness+Online.boarding, data=data, 
+# bez baggage handling
+myprobit6 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Departure.Delay.in.Minutes, data=data, 
                  family=binomial(link="probit"))
 lrtest(myprobit5, myprobit6)
 summary(myprobit6)
-#bez class
-myprobit7 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Food.and.drink+Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness+Online.boarding, data=data, 
+# bez departure delay in min
+myprobit7 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
                  family=binomial(link="probit"))
 lrtest(myprobit6, myprobit7)
 summary(myprobit7)
-#bez online.support
-myprobit8 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Food.and.drink+Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness+Online.boarding, data=data, 
+#bez online support
+myprobit8 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
                  family=binomial(link="probit"))
 lrtest(myprobit7, myprobit8)
 summary(myprobit8)
 #bez online boarding
-myprobit9 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Food.and.drink+Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness, data=data, 
+myprobit9 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service, data=data, 
                  family=binomial(link="probit"))
 lrtest(myprobit8, myprobit9)
-summary(myprobit9)
+### the change was too significant, go to the next biggest pvalue
 
-linktest_result = linktest(myprobit9)
+#bez age
+myprobit10 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
+                 family=binomial(link="probit"))
+lrtest(myprobit8, myprobit10)
+summary(myprobit10)
+#bez flight distance
+myprobit11 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
+                  family=binomial(link="probit"))
+lrtest(myprobit10, myprobit11)
+summary(myprobit11)
+# bez on board service
+myprobit12 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
+                  family=binomial(link="probit"))
+lrtest(myprobit11, myprobit12)
+### the change was too significant, go to the next biggest pvalue\
 
-# odds ratio ONLY FOR LOGITS
-#
-#
+#bez leg room service
+myprobit13 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
+                  family=binomial(link="probit"))
+lrtest(myprobit11, myprobit13)
+summary(myprobit13)
+
+linktest_result = linktest(myprobit13)
+model_summary13 <- summary(myprobit13)
+r_squared13 <- model_summary13$deviance/model_summary13$null.deviance
+print(r_squared13)
+PseudoR2(myprobit13, "all")
+bptest(myprobit13, data=data)
 
 #Hosmer-Lemshow test and Osius-Rojek test? https://statisticalhorizons.com/hosmer-lemeshow/  https://statisticalhorizons.com/alternatives-to-the-hosmer-lemeshow-test/
-gof.results = gof(myprobit)
+gof.results = gof(myprobit13)
 gof.results$gof
 # Get predicted probabilities from the model
-predicted_probs <- predict(myprobit, type = "response")
+predicted_probs <- predict(myprobit13, type = "response")
 # Perform the Hosmer-Lemeshow test
 hosmer_lemeshow <- hoslem.test(data$satisfaction, predicted_probs)
 # Print the test results
 print(hosmer_lemeshow)
 
 
-bptest(myprobit, data=data)
+# odds ratio ONLY FOR LOGITS
+#
+#
+
 #white estimator needed?
-robust_vcov = vcovHC(myprobit, data = data, type = "HC")
-coeftest(myprobit, vcov.=robust_vcov)
+#robust_vcov = vcovHC(myprobit, data = data, type = "HC")
+#coeftest(myprobit, vcov.=robust_vcov)
 
 # Calculate marginal effects
-marginal_effects <- margins(myprobit, data = data)
+marginal_effects <- margins(myprobit13, data = data)
 # Print the marginal effects
 print(marginal_effects)
 summary(marginal_effects)
