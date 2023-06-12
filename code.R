@@ -1,51 +1,73 @@
-library("dplyr")
-library('corrplot')
+#######################################################################
+###   Advanced Econometrics - Airline Customer satisfaction
+###
+###       Aleksander Wieliński  -     420 272
+###       Jakub Gazda           -     419 272
+###
+#######################################################################
 
+### LIBRARIES
+#######################################################################
+
+#install.packages("dplyr")
+library("dplyr")
+#install.packages("corrplot")
+library('corrplot')
 #install.packages("margins")
 library("margins")
+#install.packages("plm")
 library("plm")
 #install.packages("ResourceSelection")
-library(ResourceSelection)
-library(caret)
+library("ResourceSelection")
+#install.packages("ggplot2")
+library("ggplot2")
+#install.packages("lattice")
+library("lattice")
+#install.packages("caret")
+library("caret")
+#install.packages("lmtest")
 library("lmtest")
-
 #install.packages("DescTools")
 #install.packages("RDCOMClient", repos="http://www.omegahat.net/R")
-library(DescTools)
-
+library("DescTools")
 #install.packages('aods3')
-library(aods3)
+library("aods3")
+
+#######################################################################
 
 
-setwd("C:/Users/48796/OneDrive/Pulpit/STUDIA/ROK 4/SEM 2/A. Econometrics/project")
+### DATA LOADING AND PREPARATION
 
+setwd(getwd())
 data <- as.data.frame(read.csv("Invistico_Airline.csv"))
+
+# Random seed - this ensures consistent data across devices
 set.seed(123)
-# Split the dataset while maintaining the target variable distribution
+
+# Splitting the dataset while maintaining the target variable distribution.
+# This is done to save memory and computational resources and allow for a fast analysis.
 trainIndex <- createDataPartition(data$satisfaction, p = 0.005, list = FALSE, times = 1)
 
 # Create the smaller subset by selecting the instances based on the indices
 data <- data[trainIndex, ]
 
-
-# Display the count of NAs
+# Missing values removal
 na_count <- sum(is.na(data))
 print(na_count)
 data<-na.omit(data)
-View(data)
+#View(data)
 
-#BINARY ENCODING 
+# Binary encoding 
 data$satisfaction<-ifelse(data$satisfaction == "satisfied", 1,0)
 data$Gender<-ifelse(data$Gender == "Male", 1,0)
 data$Customer.Type<-ifelse(data$Customer.Type == "Loyal Customer", 1,0)
 data$Type.of.Travel<-ifelse(data$Type.of.Travel == "Personal Travel", 1,0)
 data$Class <- as.integer(factor(data$Class, levels = c("Eco", "Eco Plus", "Business"), labels = c(1, 2, 3)))
-variables <- c("Seat.comfort", "Departure.Arrival.time.convenient", "Food.and.drink", "Gate.location", "Inflight.wifi.service", "Inflight.entertainment", "Online.support", "Ease.of.Online.booking","On.board.service", "Leg.room.service", "Baggage.handling", "Checkin.service", "Cleanliness", "Online.boarding")
-#for (variable in variables) {
-#  data <- data %>% 
-#    mutate(!!variable := ifelse(!!sym(variable) %in% c(0, 1, 2), 0, 1))
-#}
 
+variables <- c("Seat.comfort", "Departure.Arrival.time.convenient", "Food.and.drink", 
+               "Gate.location", "Inflight.wifi.service", "Inflight.entertainment", 
+               "Online.support", "Ease.of.Online.booking","On.board.service", "Leg.room.service", 
+               "Baggage.handling", "Checkin.service", "Cleanliness", "Online.boarding")
 
 str(data)
 summary(data)
@@ -53,27 +75,41 @@ summary(data)
 x <- data[(data$Age==0), ]
 x
 
+### Exploratory Data Analysis
+
+hist(data$Departure.Delay.in.Minutes)
+
+# Heatmap - correlations between variables
 par(mfrow = c(1,1))
 cor_matrix <- cor(data)
 corrplot(cor_matrix, method = "color", tl.col = "black", tl.srt = 0)
 
-print_correlation_table <- function(data, variables) {
-  cor_matrix <- cor(data[, variables])
-  print(cor_matrix)
-}
+#print_correlation_table <- function(data, variables) {
+#  cor_matrix <- cor(data[, variables])
+#  print(cor_matrix)
+#}
 
 par(mar = c(2, 2, 2, 2))
 columns1 <- c("Age", "Flight.Distance", "Departure.Delay.in.Minutes", "Arrival.Delay.in.Minutes")
 par(mfrow=c(2,2))
+
 # Histograms for the columns in columns1
 for (col in columns1) {
   hist(data[[col]], main = col, xlab = "", col = "lightblue")
 }
+# Boxplots for the columns in columns1
 for (col in columns1) {
   boxplot(data[[col]], main = col, col = "lightblue")
 }
-columns2 <- c("satisfaction", "Gender", "Customer.Type","Type.of.Travel", "Class", "Seat.comfort", "Departure.Arrival.time.convenient","Food.and.drink", "Gate.location","Inflight.wifi.service", "Inflight.entertainment", "Online.support", "Ease.of.Online.booking","On.board.service", "Leg.room.service", "Baggage.handling", "Checkin.service", "Cleanliness","Online.boarding")
-par(mfrow = c(4, 5))  # Adjust the layout of the plots
+
+columns2 <- c("satisfaction", "Gender", "Customer.Type","Type.of.Travel", "Class", 
+              "Seat.comfort", "Departure.Arrival.time.convenient","Food.and.drink", 
+              "Gate.location","Inflight.wifi.service", "Inflight.entertainment", "Online.support", 
+              "Ease.of.Online.booking","On.board.service", "Leg.room.service", "Baggage.handling", 
+              "Checkin.service", "Cleanliness","Online.boarding")
+
+par(mfrow = c(4, 5))
+
 # Bar plots for the columns in columns2
 for (col in columns2) {
   barplot(table(data[[col]]), main = col, xlab = "", col = "lightblue")
@@ -91,40 +127,77 @@ for (col in columns3) {
   hist(data[[col]], main = col, xlab = "", col = "lightblue")
 }
 
+par(mfrow = c(1,1))
+# A non linear relation is introduced in order to normalize the distribution
+# of those 2 variables.
 data$Departure.Delay.in.Minutes <- log(data$Departure.Delay.in.Minutes+0.001)
 data$Arrival.Delay.in.Minutes <- log(data$Arrival.Delay.in.Minutes+0.001)
+
+hist(data$Departure.Delay.in.Minutes)
+
+### Assesing models
+
+source("linktest.R")
+
+## OLS
+
+## Logit Modelling
+
+mylogit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
+                family=binomial(link="logit"))
+
+# Model Summary
+summary(mylogit)
+logit_summary <- summary(mylogit)
+
+# R^2 statistics
+r_squared_logit <- logit_summary$deviance/logit_summary$null.deviance
+print(r_squared_logit)
+PseudoR2(mylogit, "all")
+
+# Linktest - yhat significant | yhat2 insignificant -> cannot reject H0
+linktest_result_logit = linktest(mylogit)
+summary(linktest_result_logit)
+
+## Probit Modelling
 
 #myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Online.boarding+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
 #                family=binomial(link="probit"))
 #no diff when 1,0 are 50-50, information criteria: we should use AIC to be sure, BIC(SBC) - its better, the lower the value the better 
 myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
                family=binomial(link="probit"))
-summary(myprobit)
 
-model_summary <- summary(myprobit)
-# Extract the R-squared statistic
-r_squared <- model_summary$deviance/model_summary$null.deviance
-# Print the R-squared statistic
-print(r_squared)
+# Model Summary
+summary(myprobit)
+probit_summary <- summary(myprobit)
+
+# R^2 statistics
+r_squared_probit <- probit_summary$deviance/probit_summary$null.deviance
+print(r_squared_probit)
 PseudoR2(myprobit, "all")
 #can interprate McKelvy.Zavoina if the latent variable is observed the model explainx x% of observations, count is the correct R2 explaining x% of the observation, adj.count is saying % ofcorrectly predicted observations with given variance
 
-# we dont use ramsey reset, we use LINKTEST, modoelhas correct form if yhat is significant and yhat2 is not
-#resettest(myprobit, power=2:3, type="fitted")
-source("linktest.R")
-linktest_result = linktest(myprobit)
-# yhat and yhat2 are significat that mean we reject h0 about proper form
-summary(linktest_result)
-# can also use Wald test for beta2=beta3=0
-H <- rbind(c(0,1,0,0), c(0,0,1,0))
-# h %*% coef(dem.probit)
-wald.test.results = wald.test(b = coef(dem.probit), 
-                              Sigma = vcov(dem.probit), L = H)
-wald.test.results
+# Linktest - yhat significant | yhat2 insignificant -> cannot reject H0
+linktest_result_probit = linktest(myprobit)
+summary(linktest_result_probit)
 
+### Diagnostics
+
+# can also use Wald test for beta2=beta3=0
+#H <- rbind(c(0,1,0,0), c(0,0,1,0))
+# h %*% coef(dem.probit)
+
+# DECLARE TERMS
+#?wald.test
+#wald_results = wald.test(myprobit, )
+#wald_results
+
+# Goodness of fit test
 gof_results = gof(myprobit)
 gof_results
 
+
+### General to Specific procedure
 
 #for 0,005 of dataset
 # general to specific thatway= h0 is beta=0(for additional variables) and with p-value<0.05 we reject h0. Joint insignificance of all variables test against null
@@ -209,7 +282,7 @@ bptest(myprobit13, data=data)
 
 #Hosmer-Lemshow test and Osius-Rojek test? https://statisticalhorizons.com/hosmer-lemeshow/  https://statisticalhorizons.com/alternatives-to-the-hosmer-lemeshow-test/
 gof.results = gof(myprobit13)
-gof.results$gof
+gof.results
 # Get predicted probabilities from the model
 predicted_probs <- predict(myprobit13, type = "response")
 # Perform the Hosmer-Lemeshow test
