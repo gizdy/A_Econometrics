@@ -79,6 +79,17 @@ x
 
 hist(data$Departure.Delay.in.Minutes)
 
+hist(log1p(data$Departure.Delay.in.Minutes))
+
+hist(BoxCox(data$Departure.Delay.in.Minutes, 0))
+
+
+hist(data$Arrival.Delay.in.Minutes)
+
+hist(log1p(data$Arrival.Delay.in.Minutes))
+
+hist(BoxCox(data$Arrival.Delay.in.Minutes, 0))
+
 # Heatmap - correlations between variables
 par(mfrow = c(1,1))
 cor_matrix <- cor(data)
@@ -133,17 +144,79 @@ par(mfrow = c(1,1))
 data$Departure.Delay.in.Minutes <- log(data$Departure.Delay.in.Minutes+0.001)
 data$Arrival.Delay.in.Minutes <- log(data$Arrival.Delay.in.Minutes+0.001)
 
-hist(data$Departure.Delay.in.Minutes)
-
 ### Assesing models
 
 source("linktest.R")
 
 ## OLS
 
+lpm <- lm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance
+               +Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location
+               +Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment
+               +Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service
+               +Baggage.handling+Checkin.service+Cleanliness*On.board.service
+               +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
+               +Departure.Delay.in.Minutes, data=data)
+
+summary(lpm)
+
+# -----
+# Ad. b
+
+# specification test
+resettest(lpm, power=2:3, type="fitted")
+
+# -----
+# Ad. c
+
+# heteroscedasticity
+lpm.residuals = lpm$residuals
+plot(lpm.residuals~Gender, data=data)
+plot(lpm.residuals~Customer.Type, data=data)
+
+plot(lpm.residuals~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance
+     +Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location
+     +Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment
+     +Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service
+     +Baggage.handling+Checkin.service+Cleanliness*On.board.service
+     +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
+     +Departure.Delay.in.Minutes, data=data)
+
+bptest(lpm.residuals~Gender, data=data)
+bptest(lpm.residuals~Gender+Customer.Type, data=data)
+
+bptest(lpm.residuals~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance
+       +Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location
+       +Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment
+       +Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service
+       +Baggage.handling+Checkin.service+Cleanliness*On.board.service
+       +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
+       +Departure.Delay.in.Minutes, data=data)
+
+#View(lpm$fitted.values)
+
+# -----
+# Ad. d
+
+# White's estimator of the variance-covariane matrix
+robust_vcov = vcovHC(lpm, data = olympics, type = "HC")
+coeftest(lpm, vcov.=robust_vcov)
+
+# to compare the simple lpm and the one with a robust vcov matrix
+#install.packages("stargazer")
+library("stargazer")
+robust.lpm = coeftest(lpm, vcov.=robust_vcov)
+stargazer(lpm, robust.lpm, type="text")
+
 ## Logit Modelling
 
-mylogit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
+mylogit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance
+               +Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location
+               +Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment
+               +Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service
+               +Baggage.handling+Checkin.service+Cleanliness*On.board.service
+               +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
+               +Departure.Delay.in.Minutes, data=data, 
                 family=binomial(link="logit"))
 
 # Model Summary
@@ -164,7 +237,14 @@ summary(linktest_result_logit)
 #myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Online.boarding+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
 #                family=binomial(link="probit"))
 #no diff when 1,0 are 50-50, information criteria: we should use AIC to be sure, BIC(SBC) - its better, the lower the value the better 
-myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
+myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class
+                +Flight.Distance+Seat.comfort*Food.and.drink
+                +Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location
+                +Inflight.wifi.service+Inflight.entertainment+Online.support
+                +Ease.of.Online.booking+On.board.service+Leg.room.service
+                +Baggage.handling+Checkin.service+Cleanliness*On.board.service
+                +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
+                +Departure.Delay.in.Minutes, data=data, 
                family=binomial(link="probit"))
 
 # Model Summary
