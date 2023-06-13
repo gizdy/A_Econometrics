@@ -141,6 +141,7 @@ for (col in columns3) {
 par(mfrow = c(1,1))
 # A non linear relation is introduced in order to normalize the distribution
 # of those 2 variables.
+
 data$Departure.Delay.in.Minutes <- log(data$Departure.Delay.in.Minutes+0.001)
 data$Arrival.Delay.in.Minutes <- log(data$Arrival.Delay.in.Minutes+0.001)
 
@@ -232,6 +233,10 @@ PseudoR2(mylogit, "all")
 linktest_result_logit = linktest(mylogit)
 summary(linktest_result_logit)
 
+# Stargaze
+
+stargazer(mylogit, type="text")
+
 ## Probit Modelling
 
 #myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort+Departure.Arrival.time.convenient+Food.and.drink+Gate.location+Inflight.wifi.service+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Online.boarding+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
@@ -260,6 +265,8 @@ PseudoR2(myprobit, "all")
 # Linktest - yhat significant | yhat2 insignificant -> cannot reject H0
 linktest_result_probit = linktest(myprobit)
 summary(linktest_result_probit)
+
+stargazer(myprobit, type="text")
 
 ### Diagnostics
 
@@ -369,6 +376,16 @@ predicted_probs <- predict(myprobit13, type = "response")
 hosmer_lemeshow <- hoslem.test(data$satisfaction, predicted_probs)
 # Print the test results
 print(hosmer_lemeshow)
+
+
+stargazer(lpm, mylogit, myprobit, myprobit13, type="text")
+
+info_criterion <- data.frame(model = c("lpm", "mylogit", "myprobit", "myprobit13"),
+                             AIC = c(AIC(lpm), AIC(mylogit), AIC(myprobit), AIC(myprobit13)),
+                             BIC = c(BIC(lpm), BIC(mylogit), BIC(myprobit), BIC(myprobit13))   
+                             )
+
+info_criterion
 
 
 # odds ratio ONLY FOR LOGITS
