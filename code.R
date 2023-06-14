@@ -152,14 +152,15 @@ source("linktest.R")
 ## OLS
 
 lpm <- lm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance
-               +Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location
-               +Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment
-               +Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service
-               +Baggage.handling+Checkin.service+Cleanliness*On.board.service
-               +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
-               +Departure.Delay.in.Minutes, data=data)
+          +Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location
+          +Food.and.drink*Gate.location+Inflight.wifi.service+Inflight.entertainment
+          +Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service
+          +Baggage.handling+Checkin.service+Cleanliness*On.board.service
+          +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
+          +Departure.Delay.in.Minutes, data=data)
 
 summary(lpm)
+PseudoR2(lpm, "all")
 
 # specification test
 resettest(lpm, power=2:3, type="fitted")
@@ -197,8 +198,8 @@ coeftest(lpm, vcov.=robust_vcov)
 #install.packages("stargazer")
 library("stargazer")
 robust.lpm = coeftest(lpm, vcov.=robust_vcov)
-stargazer(lpm, robust.lpm, type="html", 
-          out="C:/Users/Aleksander.Wielinski/Desktop/Documents/0.Pers-UNI/__AE/A_Econometrics-main/A_Econometrics-main/lpm-stargaze.html")
+#stargazer(lpm, robust.lpm, type="html", 
+#          out="C:/Users/Aleksander.Wielinski/Desktop/Documents/0.Pers-UNI/__AE/A_Econometrics-main/A_Econometrics-main/lpm-stargaze.html")
 
 ## Logit Modelling
 
@@ -209,7 +210,7 @@ mylogit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight
                +Baggage.handling+Checkin.service+Cleanliness*On.board.service
                +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
                +Departure.Delay.in.Minutes, data=data, 
-                family=binomial(link="logit"))
+               family=binomial(link="logit"))
 
 # Model Summary
 summary(mylogit)
@@ -241,7 +242,7 @@ myprobit <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class
                 +Baggage.handling+Checkin.service+Cleanliness*On.board.service
                 +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
                 +Departure.Delay.in.Minutes, data=data, 
-               family=binomial(link="probit"))
+                family=binomial(link="probit"))
 
 # Model Summary
 summary(myprobit)
@@ -255,9 +256,10 @@ PseudoR2(myprobit, "all")
 
 # Linktest - yhat significant | yhat2 insignificant -> cannot reject H0
 linktest_result_probit = linktest(myprobit)
+
 summary(linktest_result_probit)
 
-stargazer(myprobit, type="text")
+stargazer(myprobit, type="html", out="C:/Users/48796/OneDrive/Pulpit/STUDIA/ROK 4/SEM 2/A. Econometrics/project/myprobit1.html")
 
 ### Diagnostics
 
@@ -283,7 +285,7 @@ null_probit = glm(satisfaction~1, data=data, family=binomial(link="probit"))
 lrtest(myprobit, null_probit)
 #bez inflight wifi service
 myprobit1 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
-                family=binomial(link="probit"))
+                 family=binomial(link="probit"))
 lrtest(myprobit, myprobit1)
 summary(myprobit1)
 #bez inflight.entertainment
@@ -293,7 +295,7 @@ lrtest(myprobit1, myprobit2)
 ### the change was too significant, go to the next biggest pvalue
 
 #bez gate location
-myprobit3 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
+myprobit3 <- glm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient+Food.and.drink+Inflight.entertainment+Online.support+Ease.of.Online.booking+On.board.service+Leg.room.service+Baggage.handling+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes+Departure.Delay.in.Minutes, data=data, 
                  family=binomial(link="probit"))
 lrtest(myprobit1, myprobit3)
 ### the change was too significant, go to the next biggest pvalue
@@ -331,7 +333,7 @@ lrtest(myprobit8, myprobit9)
 
 #bez age
 myprobit10 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Flight.Distance+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
-                 family=binomial(link="probit"))
+                  family=binomial(link="probit"))
 lrtest(myprobit8, myprobit10)
 summary(myprobit10)
 #bez flight distance
@@ -353,6 +355,7 @@ summary(myprobit13)
 
 # Link test
 linktest_result = linktest(myprobit13)
+stargazer(linktest_result, type="text", out="C:/Users/48796/OneDrive/Pulpit/STUDIA/ROK 4/SEM 2/A. Econometrics/project/linktest_13.html")
 
 # Model information
 model_summary13 <- summary(myprobit13)
@@ -370,16 +373,15 @@ gof.results
 predicted_probs <- predict(myprobit13, type = "response")
 
 hosmer_lemeshow <- hoslem.test(data$satisfaction, predicted_probs)
+stargazer(hosmer_lemeshow, type="text", out="C:/Users/48796/OneDrive/Pulpit/STUDIA/ROK 4/SEM 2/A. Econometrics/project/HL_13.html")
 
 print(hosmer_lemeshow)
-
 stargazer(myprobit, myprobit13, type="html", 
-          out="C:/Users/Aleksander.Wielinski/Desktop/Documents/0.Pers-UNI/__AE/A_Econometrics-main/A_Econometrics-main/gts-stargaze.html")
-
+          out="C:/Users/48796/OneDrive/Pulpit/STUDIA/ROK 4/SEM 2/A. Econometrics/project/probit1vs13.html")
 stargazer(lpm, mylogit, myprobit, myprobit13, type="text")
 
 stargazer(lpm, robust.lpm, mylogit, myprobit, myprobit13, type="html", 
-          out="C:/Users/Aleksander.Wielinski/Desktop/Documents/0.Pers-UNI/__AE/A_Econometrics-main/A_Econometrics-main/final-stargaze.html")
+          out="C:/Users/48796/OneDrive/Pulpit/STUDIA/ROK 4/SEM 2/A. Econometrics/project/allmodels.html")
 
 info_criterion <- data.frame(model = c("robust.lpm", "mylogit", "myprobit"),
                              AIC = c(AIC(robust.lpm), AIC(mylogit), AIC(myprobit)),
@@ -391,18 +393,14 @@ info_criterion
 info_criterion <- data.frame(model = c("robust.lpm", "mylogit", "myprobit", "myprobit13"),
                              AIC = c(AIC(robust.lpm), AIC(mylogit), AIC(myprobit), AIC(myprobit13)),
                              BIC = c(BIC(robust.lpm), BIC(mylogit), BIC(myprobit), BIC(myprobit13))   
-                             )
+)
 
 info_criterion
-
-
-# odds ratio ONLY FOR LOGITS
-#
-#
 
 
 # Calculate marginal effects
 marginal_effects <- margins(myprobit13, data = data)
 # Print the marginal effects
 print(marginal_effects)
-summary(marginal_effects)
+stargazer(marginal_effects, type="text")
+stargazer(summary(marginal_effects), type="text")
