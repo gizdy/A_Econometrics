@@ -161,14 +161,8 @@ lpm <- lm(satisfaction~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Dist
 
 summary(lpm)
 
-# -----
-# Ad. b
-
 # specification test
 resettest(lpm, power=2:3, type="fitted")
-
-# -----
-# Ad. c
 
 # heteroscedasticity
 lpm.residuals = lpm$residuals
@@ -194,10 +188,6 @@ bptest(lpm.residuals~Gender+Customer.Type+Age+Type.of.Travel+Class+Flight.Distan
        +Online.boarding*Inflight.entertainment+Arrival.Delay.in.Minutes
        +Departure.Delay.in.Minutes, data=data)
 
-#View(lpm$fitted.values)
-
-# -----
-# Ad. d
 
 # White's estimator of the variance-covariane matrix
 robust_vcov = vcovHC(lpm, data = olympics, type = "HC")
@@ -207,7 +197,8 @@ coeftest(lpm, vcov.=robust_vcov)
 #install.packages("stargazer")
 library("stargazer")
 robust.lpm = coeftest(lpm, vcov.=robust_vcov)
-stargazer(lpm, robust.lpm, type="text")
+stargazer(lpm, robust.lpm, type="html", 
+          out="C:/Users/Aleksander.Wielinski/Desktop/Documents/0.Pers-UNI/__AE/A_Econometrics-main/A_Econometrics-main/lpm-stargaze.html")
 
 ## Logit Modelling
 
@@ -286,7 +277,7 @@ gof_results
 
 ### General to Specific procedure
 
-#for 0,005 of dataset
+# for 0,005 of dataset
 # general to specific thatway= h0 is beta=0(for additional variables) and with p-value<0.05 we reject h0. Joint insignificance of all variables test against null
 null_probit = glm(satisfaction~1, data=data, family=binomial(link="probit"))
 lrtest(myprobit, null_probit)
@@ -352,7 +343,7 @@ summary(myprobit11)
 myprobit12 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Leg.room.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
                   family=binomial(link="probit"))
 lrtest(myprobit11, myprobit12)
-### the change was too significant, go to the next biggest pvalue\
+### the change was too significant, go to the next biggest pvalue
 
 #bez leg room service
 myprobit13 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*Food.and.drink+Departure.Arrival.time.convenient*Gate.location+Food.and.drink*Gate.location+Inflight.entertainment+Ease.of.Online.booking+On.board.service+Checkin.service+Cleanliness*On.board.service+Online.boarding*Inflight.entertainment, data=data, 
@@ -360,29 +351,46 @@ myprobit13 <- glm(satisfaction~Gender+Customer.Type+Type.of.Travel+Seat.comfort*
 lrtest(myprobit11, myprobit13)
 summary(myprobit13)
 
+# Link test
 linktest_result = linktest(myprobit13)
+
+# Model information
 model_summary13 <- summary(myprobit13)
 r_squared13 <- model_summary13$deviance/model_summary13$null.deviance
 print(r_squared13)
 PseudoR2(myprobit13, "all")
+
+# Breusch-Pagan test
 bptest(myprobit13, data=data)
 
-#Hosmer-Lemshow test and Osius-Rojek test? https://statisticalhorizons.com/hosmer-lemeshow/  https://statisticalhorizons.com/alternatives-to-the-hosmer-lemeshow-test/
+# Goodnes of fit tests
 gof.results = gof(myprobit13)
 gof.results
-# Get predicted probabilities from the model
+
 predicted_probs <- predict(myprobit13, type = "response")
-# Perform the Hosmer-Lemeshow test
+
 hosmer_lemeshow <- hoslem.test(data$satisfaction, predicted_probs)
-# Print the test results
+
 print(hosmer_lemeshow)
 
+stargazer(myprobit, myprobit13, type="html", 
+          out="C:/Users/Aleksander.Wielinski/Desktop/Documents/0.Pers-UNI/__AE/A_Econometrics-main/A_Econometrics-main/gts-stargaze.html")
 
 stargazer(lpm, mylogit, myprobit, myprobit13, type="text")
 
-info_criterion <- data.frame(model = c("lpm", "mylogit", "myprobit", "myprobit13"),
-                             AIC = c(AIC(lpm), AIC(mylogit), AIC(myprobit), AIC(myprobit13)),
-                             BIC = c(BIC(lpm), BIC(mylogit), BIC(myprobit), BIC(myprobit13))   
+stargazer(lpm, robust.lpm, mylogit, myprobit, myprobit13, type="html", 
+          out="C:/Users/Aleksander.Wielinski/Desktop/Documents/0.Pers-UNI/__AE/A_Econometrics-main/A_Econometrics-main/final-stargaze.html")
+
+info_criterion <- data.frame(model = c("robust.lpm", "mylogit", "myprobit"),
+                             AIC = c(AIC(robust.lpm), AIC(mylogit), AIC(myprobit)),
+                             BIC = c(BIC(robust.lpm), BIC(mylogit), BIC(myprobit))   
+)
+
+info_criterion
+
+info_criterion <- data.frame(model = c("robust.lpm", "mylogit", "myprobit", "myprobit13"),
+                             AIC = c(AIC(robust.lpm), AIC(mylogit), AIC(myprobit), AIC(myprobit13)),
+                             BIC = c(BIC(robust.lpm), BIC(mylogit), BIC(myprobit), BIC(myprobit13))   
                              )
 
 info_criterion
@@ -392,9 +400,6 @@ info_criterion
 #
 #
 
-#white estimator needed?
-#robust_vcov = vcovHC(myprobit, data = data, type = "HC")
-#coeftest(myprobit, vcov.=robust_vcov)
 
 # Calculate marginal effects
 marginal_effects <- margins(myprobit13, data = data)
